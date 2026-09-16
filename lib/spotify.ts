@@ -44,6 +44,7 @@ export interface LyricsData {
 }
 
 class SpotifyClient {
+  private readonly authVersion = '2';
   private clientId: string;
   private redirectUri: string;
   private accessToken: string | null = null;
@@ -70,8 +71,12 @@ class SpotifyClient {
     }
 
     const scopes = [
+      'streaming',
+      'user-read-email',
+      'user-read-private',
       'user-read-currently-playing',
       'user-read-playback-state',
+      'user-modify-playback-state',
     ].join(' ');
 
     const params = new URLSearchParams({
@@ -115,6 +120,7 @@ class SpotifyClient {
       if (typeof window !== 'undefined') {
         localStorage.setItem('spotify_access_token', accessToken);
         localStorage.setItem('spotify_token_expiry', this.tokenExpiry.toString());
+        localStorage.setItem('spotify_auth_version', this.authVersion);
         if (response.data.refresh_token) {
           localStorage.setItem('spotify_refresh_token', response.data.refresh_token);
         }
@@ -148,6 +154,13 @@ class SpotifyClient {
    */
   loadStoredToken(): boolean {
     if (typeof window === 'undefined') return false;
+
+    if (localStorage.getItem('spotify_auth_version') !== this.authVersion) {
+      localStorage.removeItem('spotify_access_token');
+      localStorage.removeItem('spotify_token_expiry');
+      localStorage.removeItem('spotify_refresh_token');
+      return false;
+    }
     
     const storedToken = localStorage.getItem('spotify_access_token');
     const storedExpiry = localStorage.getItem('spotify_token_expiry');
@@ -196,6 +209,11 @@ class SpotifyClient {
     }
 
     throw new Error('Access token expired. Please re-authenticate.');
+  }
+
+  /** Access token callback used by the official Web Playback SDK. */
+  async getValidAccessToken(): Promise<string> {
+    return this.ensureValidToken();
   }
 
   /**

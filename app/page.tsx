@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import LyricsView from '@/components/LyricsView';
+import SpotifyWebPlayer from '@/components/SpotifyWebPlayer';
 import { spotifyClient } from '@/lib/spotify';
 
 export default function Home() {
@@ -106,5 +107,10 @@ export default function Home() {
     );
   }
 
-  return <LyricsView trackId={trackId} currentTimeMs={currentTimeMs} />;
+  return (
+    <>
+      <LyricsView trackId={trackId} currentTimeMs={currentTimeMs} />
+      <SpotifyWebPlayer onTrackChange={setTrackId} />
+    </>
+  );
 }
