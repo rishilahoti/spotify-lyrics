@@ -10,6 +10,7 @@ import LyricsControls from './LyricsControls';
 import VideoOverlay from './VideoOverlay';
 
 type BackgroundMode = 'album' | 'dark' | 'custom';
+type VideoType = 'music' | 'lofi';
 
 interface LyricsViewProps {
   trackId?: string;
@@ -21,36 +22,57 @@ export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) 
   const { lyrics, activeLineIndex, isLoading: lyricsLoading, error: lyricsError } = useLyrics(track?.id || null, currentTimeMs);
 
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('album');
-  const [isVideoMode, setIsVideoMode] = useState(false);
+  const [videoType, setVideoType] = useState<VideoType | null>(null);
+  const [isVideoVisible, setIsVideoVisible] = useState(false);
   const [customColor, setCustomColor] = useState('#353535');
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const requestedVideoTrackRef = useRef<string | null>(null);
+  const [musicVideoUrl, setMusicVideoUrl] = useState<string | null>(null);
+  const [lofiVideoUrl, setLofiVideoUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const requestedMusicTrackRef = useRef<string | null>(null);
 
   // Fetch video when video mode is enabled and track is available
   useEffect(() => {
-    if (!isVideoMode || !track || requestedVideoTrackRef.current === track.id) {
+    if (videoType !== 'music' || !track || requestedMusicTrackRef.current === track.id) {
       return;
     }
 
     let cancelled = false;
-    requestedVideoTrackRef.current = track.id;
+    requestedMusicTrackRef.current = track.id;
     youtubeClient
       .searchMusicVideo(track.name, track.artists[0]?.name || '')
       .then((video) => {
         if (!cancelled) {
-          setVideoUrl(video?.embedUrl ?? null);
+          setMusicVideoUrl(video?.embedUrl ?? null);
+          setVideoError(video ? null : 'No embeddable music video was found for this track.');
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setVideoUrl(null);
+          setMusicVideoUrl(null);
+          setVideoError('Could not load a music video. Check the YouTube API key configuration.');
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isVideoMode, track]);
+  }, [videoType, track]);
+
+  useEffect(() => {
+    if (videoType !== 'lofi' || lofiVideoUrl) return;
+
+    let cancelled = false;
+    youtubeClient.searchLofiBackground().then((video) => {
+      if (!cancelled) {
+        setLofiVideoUrl(video?.embedUrl ?? null);
+        setVideoError(video ? null : 'Could not find an embeddable lofi background video.');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [videoType, lofiVideoUrl]);
 
   // Determine background color based on mode
   const getBackgroundColor = (): string => {
@@ -82,26 +104,28 @@ export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) 
       setBackgroundMode('album');
     } else {
       setBackgroundMode('dark');
-      setIsVideoMode(false); // Disable video when switching to dark mode
+      setIsVideoVisible(false);
     }
   };
 
-  const handleVideoToggle = () => {
-    if (isVideoMode) {
-      setIsVideoMode(false);
-      setVideoUrl(null);
-      requestedVideoTrackRef.current = null;
+  const showVideo = (type: VideoType) => {
+    if (videoType === type && isVideoVisible) {
+      setIsVideoVisible(false);
     } else {
-      setIsVideoMode(true);
-      setBackgroundMode('album'); // Reset to album mode when enabling video
+      setVideoError(null);
+      setVideoType(type);
+      setIsVideoVisible(true);
+      setBackgroundMode('album');
     }
   };
 
   const handleCustomColorChange = (color: string) => {
     setCustomColor(color);
     setBackgroundMode('custom');
-    setIsVideoMode(false); // Disable video when using custom color
+    setIsVideoVisible(false);
   };
+
+  const activeVideoUrl = videoType === 'music' ? musicVideoUrl : lofiVideoUrl;
 
   if (trackLoading || !track) {
     return (
@@ -121,7 +145,7 @@ export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) 
       className="relative w-full h-screen overflow-hidden transition-colors duration-500"
       style={{ backgroundColor }}
     >
-      <VideoOverlay videoUrl={videoUrl} isVisible={isVideoMode}>
+      <VideoOverlay videoUrl={activeVideoUrl} isVisible={isVideoVisible}>
         {/* Header with Controls */}
         <div className="absolute top-0 left-0 right-0 z-20 p-4">
           <div className="flex items-center justify-between">
@@ -133,10 +157,12 @@ export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) 
             </div>
             <LyricsControls
               isDarkMode={backgroundMode === 'dark'}
-              isVideoMode={isVideoMode}
+              isVideoMode={videoType === 'music' && isVideoVisible}
+              isLofiMode={videoType === 'lofi' && isVideoVisible}
               customColor={customColor}
               onDarkModeToggle={handleDarkModeToggle}
-              onVideoToggle={handleVideoToggle}
+              onVideoToggle={() => showVideo('music')}
+              onLofiToggle={() => showVideo('lofi')}
               onCustomColorChange={handleCustomColorChange}
             />
           </div>
@@ -162,6 +188,12 @@ export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) 
             />
           )}
         </div>
+
+        {videoError && isVideoVisible && (
+          <p className="absolute bottom-20 left-1/2 z-20 max-w-md -translate-x-1/2 rounded bg-black/60 px-3 py-2 text-center text-sm text-white/80">
+            {videoError}
+          </p>
+        )}
       </VideoOverlay>
     </div>
   );

@@ -5,18 +5,22 @@ import ColorPicker from './ColorPicker';
 interface LyricsControlsProps {
   isDarkMode: boolean;
   isVideoMode: boolean;
+  isLofiMode: boolean;
   customColor: string;
   onDarkModeToggle: () => void;
   onVideoToggle: () => void;
+  onLofiToggle: () => void;
   onCustomColorChange: (color: string) => void;
 }
 
 export default function LyricsControls({
   isDarkMode,
   isVideoMode,
+  isLofiMode,
   customColor,
   onDarkModeToggle,
   onVideoToggle,
+  onLofiToggle,
   onCustomColorChange,
 }: LyricsControlsProps) {
   return (
@@ -88,6 +92,20 @@ export default function LyricsControls({
           <polygon points="23 7 16 12 23 17 23 7" />
           <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
         </svg>
+      </button>
+
+      {/* Random muted lofi/animated background */}
+      <button
+        onClick={onLofiToggle}
+        className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 ${
+          isLofiMode
+            ? 'bg-white text-black'
+            : 'bg-white/10 text-white hover:bg-white/20'
+        }`}
+        aria-label="Toggle lofi animated background"
+        title="Lofi Animated Background"
+      >
+        ✦
       </button>
 
       {/* Custom Color Picker */}

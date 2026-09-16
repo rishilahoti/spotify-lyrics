@@ -33,6 +33,8 @@ class YouTubeClient {
           maxResults: 1,
           key: this.apiKey,
           videoCategoryId: '10', // Music category
+          videoEmbeddable: 'true',
+          videoSyndicated: 'true',
         },
       });
 
@@ -42,7 +44,7 @@ class YouTubeClient {
           videoId: video.id.videoId,
           title: video.snippet.title,
           thumbnail: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.default.url,
-          embedUrl: `https://www.youtube.com/embed/${video.id.videoId}?autoplay=1&controls=1&modestbranding=1&rel=0`,
+          embedUrl: this.getEmbedUrl(video.id.videoId),
         };
       }
 
@@ -58,16 +60,57 @@ class YouTubeClient {
     }
   }
 
+  /** Find an embeddable, muted 2D/lofi-style decorative background video. */
+  async searchLofiBackground(): Promise<YouTubeVideo | null> {
+    if (!this.apiKey) {
+      console.warn('YouTube API key not configured');
+      return null;
+    }
+
+    try {
+      const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+        params: {
+          part: 'snippet',
+          q: 'lofi 2d animated aesthetic background',
+          type: 'video',
+          maxResults: 12,
+          key: this.apiKey,
+          videoEmbeddable: 'true',
+          videoSyndicated: 'true',
+        },
+      });
+      const videos = response.data.items ?? [];
+      if (videos.length === 0) return null;
+
+      const video = videos[Math.floor(Math.random() * videos.length)];
+      return {
+        videoId: video.id.videoId,
+        title: video.snippet.title,
+        thumbnail: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.default.url,
+        embedUrl: this.getEmbedUrl(video.id.videoId),
+      };
+    } catch (error) {
+      console.error('Error searching for lofi background:', error);
+      return null;
+    }
+  }
+
   /**
    * Get embed URL for a video ID
    */
-  getEmbedUrl(videoId: string, autoplay: boolean = true): string {
+  getEmbedUrl(videoId: string): string {
     const params = new URLSearchParams({
-      autoplay: autoplay ? '1' : '0',
-      controls: '1',
+      autoplay: '1',
+      mute: '1',
+      controls: '0',
+      disablekb: '1',
+      playsinline: '1',
       modestbranding: '1',
       rel: '0',
       enablejsapi: '1',
+      cc_load_policy: '0',
+      iv_load_policy: '3',
+      fs: '0',
     });
 
     return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
