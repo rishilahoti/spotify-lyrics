@@ -24,3 +24,32 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom scrollbar for lyrics view */
+.lyrics-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.lyrics-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lyrics-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.lyrics-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Smooth transitions for background colors */
+.transition-bg {
+  transition: background-color 0.5s ease-in-out;
+}
+
+/* Ensure full height for lyrics view */
+#__next {
+  height: 100vh;
+  overflow: hidden;
+}
