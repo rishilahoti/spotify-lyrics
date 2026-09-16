@@ -37,7 +37,7 @@ export function useLyrics(trackId: string | null, currentTimeMs?: number): UseLy
       } else {
         setLyricsData(null);
         lyricsRef.current = [];
-        setError('Lyrics not available for this track');
+        setError('Lyrics need a licensed provider. Spotify\'s public Web API does not provide lyrics.');
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch lyrics';

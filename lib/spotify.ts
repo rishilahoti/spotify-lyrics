@@ -53,17 +53,25 @@ class SpotifyClient {
     this.clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || '';
     this.redirectUri = 
       process.env.NEXT_PUBLIC_SPOTIFY_REDIRECT_URI || 
-      (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+      (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:3000');
   }
 
   /**
    * Generate Spotify OAuth authorization URL
    */
   getAuthUrl(): string {
+    if (!this.clientId) {
+      throw new Error('Spotify client ID is not configured. Add NEXT_PUBLIC_SPOTIFY_CLIENT_ID.');
+    }
+
+    const state = crypto.randomUUID();
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('spotify_oauth_state', state);
+    }
+
     const scopes = [
       'user-read-currently-playing',
       'user-read-playback-state',
-      'user-modify-playback-state',
     ].join(' ');
 
     const params = new URLSearchParams({
@@ -71,10 +79,18 @@ class SpotifyClient {
       response_type: 'code',
       redirect_uri: this.redirectUri,
       scope: scopes,
+      state,
       show_dialog: 'true',
     });
 
     return `https://accounts.spotify.com/authorize?${params.toString()}`;
+  }
+
+  validateState(state: string | null): boolean {
+    if (typeof window === 'undefined') return false;
+    const expectedState = sessionStorage.getItem('spotify_oauth_state');
+    sessionStorage.removeItem('spotify_oauth_state');
+    return Boolean(state && expectedState && state === expectedState);
   }
 
   /**
@@ -99,6 +115,9 @@ class SpotifyClient {
       if (typeof window !== 'undefined') {
         localStorage.setItem('spotify_access_token', accessToken);
         localStorage.setItem('spotify_token_expiry', this.tokenExpiry.toString());
+        if (response.data.refresh_token) {
+          localStorage.setItem('spotify_refresh_token', response.data.refresh_token);
+        }
       }
       
       return accessToken;
@@ -157,7 +176,25 @@ class SpotifyClient {
       return this.accessToken;
     }
 
-    // Token expired or not set - user needs to re-authenticate
+    if (typeof window !== 'undefined') {
+      const refreshToken = localStorage.getItem('spotify_refresh_token');
+      if (refreshToken) {
+        const response = await axios.post('/api/auth/refresh', { refreshToken });
+        const accessToken = response.data.access_token;
+        if (!accessToken) {
+          throw new Error('Spotify did not return a refreshed access token.');
+        }
+        this.accessToken = accessToken;
+        this.tokenExpiry = Date.now() + response.data.expires_in * 1000;
+        localStorage.setItem('spotify_access_token', accessToken);
+        localStorage.setItem('spotify_token_expiry', this.tokenExpiry.toString());
+        if (response.data.refresh_token) {
+          localStorage.setItem('spotify_refresh_token', response.data.refresh_token);
+        }
+        return accessToken;
+      }
+    }
+
     throw new Error('Access token expired. Please re-authenticate.');
   }
 
@@ -211,24 +248,10 @@ class SpotifyClient {
    * Get lyrics for a track
    */
   async getLyrics(trackId: string): Promise<LyricsData | null> {
-    try {
-      const token = await this.ensureValidToken();
-      const response = await axios.get(`https://api.spotify.com/v1/tracks/${trackId}/lyrics`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      return response.data as LyricsData;
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // Lyrics not available
-        return null;
-      }
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Error getting lyrics:', message);
-      throw error;
-    }
+    // Spotify's public Web API has no lyrics endpoint. This is deliberately a
+    // no-op until a licensed lyrics provider is connected.
+    void trackId;
+    return null;
   }
 
   /**

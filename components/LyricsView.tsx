@@ -18,7 +18,7 @@ interface LyricsViewProps {
 
 export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) {
   const { track, albumCoverUrl, colors, isLoading: trackLoading } = useSpotifyTrack(trackId);
-  const { lyrics, activeLineIndex, isLoading: lyricsLoading } = useLyrics(track?.id || null, currentTimeMs);
+  const { lyrics, activeLineIndex, isLoading: lyricsLoading, error: lyricsError } = useLyrics(track?.id || null, currentTimeMs);
 
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('album');
   const [isVideoMode, setIsVideoMode] = useState(false);
@@ -137,6 +137,10 @@ export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) 
           {lyricsLoading ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-center text-white/60 text-lg">Loading lyrics...</p>
+            </div>
+          ) : lyricsError ? (
+            <div className="flex items-center justify-center h-full px-6">
+              <p className="max-w-lg text-center text-white/70 text-lg">{lyricsError}</p>
             </div>
           ) : (
             <LyricsDisplay

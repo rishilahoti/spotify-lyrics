@@ -29,7 +29,7 @@ Create a `.env.local` file in the root directory:
 
 ```env
 NEXT_PUBLIC_SPOTIFY_CLIENT_ID=your_spotify_client_id
-NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://localhost:3000
+NEXT_PUBLIC_SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 NEXT_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key
 ```
@@ -39,7 +39,7 @@ NEXT_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
 2. Create a new app
 3. Copy the Client ID and Client Secret
-4. Add `http://localhost:3000` to the Redirect URIs
+4. Add `http://127.0.0.1:3000` to the Redirect URIs
 
 ### 4. Get YouTube API Key
 
@@ -55,7 +55,7 @@ NEXT_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000) in your browser.
 
 ## Usage
 

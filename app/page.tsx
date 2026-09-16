@@ -6,6 +6,7 @@ import { spotifyClient } from '@/lib/spotify';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [trackId, setTrackId] = useState<string | undefined>();
   // Note: currentTimeMs is reserved for future playback position sync
   const [currentTimeMs] = useState<number | undefined>();
@@ -15,13 +16,20 @@ export default function Home() {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const error = urlParams.get('error');
+    const state = urlParams.get('state');
 
     if (error) {
       console.error('Spotify authentication error:', error);
+      setAuthError(`Spotify sign-in failed: ${error}`);
       return;
     }
 
     if (code) {
+      if (!spotifyClient.validateState(state)) {
+        setAuthError('Spotify sign-in could not be verified. Please try again.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
       // Exchange code for token
       spotifyClient
         .getAccessToken(code)
@@ -32,6 +40,7 @@ export default function Home() {
         })
         .catch((err) => {
           console.error('Failed to get access token:', err);
+          setAuthError('Could not complete Spotify sign-in. Check the redirect URI and try again.');
         });
     } else {
       // Check if we have a stored token
@@ -69,8 +78,12 @@ export default function Home() {
   }, [isAuthenticated]);
 
   const handleLogin = () => {
-    const authUrl = spotifyClient.getAuthUrl();
-    window.location.href = authUrl;
+    try {
+      const authUrl = spotifyClient.getAuthUrl();
+      window.location.href = authUrl;
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Unable to start Spotify sign-in.');
+    }
   };
 
   if (!isAuthenticated) {
@@ -81,6 +94,7 @@ export default function Home() {
           <p className="text-white/60 mb-8">
             Connect your Spotify account to view synchronized lyrics
           </p>
+          {authError && <p className="mb-4 max-w-md text-sm text-red-300">{authError}</p>}
           <button
             onClick={handleLogin}
             className="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-full font-semibold transition-colors"
