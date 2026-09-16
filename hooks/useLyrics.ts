@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { spotifyClient, LyricsData, LyricsLine } from '@/lib/spotify';
+import { spotifyClient, LyricsLine } from '@/lib/spotify';
 
 interface UseLyricsReturn {
   lyrics: LyricsLine[];
@@ -13,7 +13,6 @@ interface UseLyricsReturn {
 }
 
 export function useLyrics(trackId: string | null, currentTimeMs?: number): UseLyricsReturn {
-  const [lyricsData, setLyricsData] = useState<LyricsData | null>(null);
   const [activeLineIndex, setActiveLineIndex] = useState<number>(-1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +20,6 @@ export function useLyrics(trackId: string | null, currentTimeMs?: number): UseLy
 
   const fetchLyrics = useCallback(async () => {
     if (!trackId) {
-      setLyricsData(null);
       lyricsRef.current = [];
       return;
     }
@@ -32,10 +30,8 @@ export function useLyrics(trackId: string | null, currentTimeMs?: number): UseLy
     try {
       const data = await spotifyClient.getLyrics(trackId);
       if (data) {
-        setLyricsData(data);
         lyricsRef.current = data.lyrics.lines || [];
       } else {
-        setLyricsData(null);
         lyricsRef.current = [];
         setError('Lyrics need a licensed provider. Spotify\'s public Web API does not provide lyrics.');
       }
@@ -85,9 +81,10 @@ export function useLyrics(trackId: string | null, currentTimeMs?: number): UseLy
     fetchLyrics();
   }, [fetchLyrics]);
 
-  const setCurrentTime = useCallback((timeMs: number) => {
+  const setCurrentTime = useCallback((_timeMs: number) => {
     // This is handled by the useEffect above
     // But we expose it for external control if needed
+    void _timeMs;
   }, []);
 
   return {

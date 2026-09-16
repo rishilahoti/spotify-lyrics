@@ -20,13 +20,13 @@ export default function Home() {
 
     if (error) {
       console.error('Spotify authentication error:', error);
-      setAuthError(`Spotify sign-in failed: ${error}`);
+      queueMicrotask(() => setAuthError(`Spotify sign-in failed: ${error}`));
       return;
     }
 
     if (code) {
       if (!spotifyClient.validateState(state)) {
-        setAuthError('Spotify sign-in could not be verified. Please try again.');
+        queueMicrotask(() => setAuthError('Spotify sign-in could not be verified. Please try again.'));
         window.history.replaceState({}, document.title, window.location.pathname);
         return;
       }

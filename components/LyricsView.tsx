@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSpotifyTrack } from '@/hooks/useSpotifyTrack';
 import { useLyrics } from '@/hooks/useLyrics';
 import { youtubeClient } from '@/lib/youtube';
@@ -17,34 +17,40 @@ interface LyricsViewProps {
 }
 
 export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) {
-  const { track, albumCoverUrl, colors, isLoading: trackLoading } = useSpotifyTrack(trackId);
+  const { track, colors, isLoading: trackLoading } = useSpotifyTrack(trackId);
   const { lyrics, activeLineIndex, isLoading: lyricsLoading, error: lyricsError } = useLyrics(track?.id || null, currentTimeMs);
 
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('album');
   const [isVideoMode, setIsVideoMode] = useState(false);
   const [customColor, setCustomColor] = useState('#353535');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+  const requestedVideoTrackRef = useRef<string | null>(null);
 
   // Fetch video when video mode is enabled and track is available
   useEffect(() => {
-    if (isVideoMode && track && !videoUrl && !isLoadingVideo) {
-      setIsLoadingVideo(true);
-      youtubeClient
-        .searchMusicVideo(track.name, track.artists[0]?.name || '')
-        .then((video) => {
-          if (video) {
-            setVideoUrl(video.embedUrl);
-          }
-          setIsLoadingVideo(false);
-        })
-        .catch(() => {
-          setIsLoadingVideo(false);
-        });
-    } else if (!isVideoMode) {
-      setVideoUrl(null);
+    if (!isVideoMode || !track || requestedVideoTrackRef.current === track.id) {
+      return;
     }
-  }, [isVideoMode, track, videoUrl, isLoadingVideo]);
+
+    let cancelled = false;
+    requestedVideoTrackRef.current = track.id;
+    youtubeClient
+      .searchMusicVideo(track.name, track.artists[0]?.name || '')
+      .then((video) => {
+        if (!cancelled) {
+          setVideoUrl(video?.embedUrl ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setVideoUrl(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isVideoMode, track]);
 
   // Determine background color based on mode
   const getBackgroundColor = (): string => {
@@ -81,8 +87,12 @@ export default function LyricsView({ trackId, currentTimeMs }: LyricsViewProps) 
   };
 
   const handleVideoToggle = () => {
-    setIsVideoMode(!isVideoMode);
-    if (!isVideoMode) {
+    if (isVideoMode) {
+      setIsVideoMode(false);
+      setVideoUrl(null);
+      requestedVideoTrackRef.current = null;
+    } else {
+      setIsVideoMode(true);
       setBackgroundMode('album'); // Reset to album mode when enabling video
     }
   };
